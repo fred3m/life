@@ -133,7 +133,6 @@
   }
 
   function onMouseDown(e: MouseEvent) {
-    if (store.session.playing) return;
     const [mx, my] = mousePos(e);
     const [gx, gy] = screenToGrid(store.session.viewport, mx, my);
 
@@ -152,6 +151,7 @@
       return;
     }
 
+    if (store.session.playing) return;
     if (e.button !== 0) return;
 
     const tool = store.session.activeTool;
