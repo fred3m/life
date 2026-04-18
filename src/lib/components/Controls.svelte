@@ -18,6 +18,14 @@
   <button type="button" onclick={() => store.redo()} disabled={!store.canRedo} title="Cmd/Ctrl+Shift+Z">
     ↷ Redo
   </button>
+  <button
+    type="button"
+    onclick={() => store.copySelection()}
+    disabled={!store.session.selection || store.session.playing}
+    title="Cmd/Ctrl+C"
+  >
+    ⧉ Copy
+  </button>
   <label for="speed-slider">Speed:</label>
   <input
     id="speed-slider"

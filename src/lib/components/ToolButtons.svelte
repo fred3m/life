@@ -7,11 +7,12 @@
     { id: 'erase', label: '✗ Eraser' },
     { id: 'move', label: '✥ Move / Pan' },
     { id: 'select', label: '▭ Select' },
+    { id: 'paste', label: '⎘ Paste' },
   ];
 
   function pick(t: Tool) {
     store.setTool(t);
-    store.clearSelection();
+    if (t !== 'select') store.clearSelection();
   }
 </script>
 
@@ -21,6 +22,7 @@
       type="button"
       class="tool-btn"
       class:active={store.session.activeTool === t.id}
+      disabled={t.id === 'paste' && !store.session.clipboard}
       onclick={() => pick(t.id)}
     >
       {t.label}
@@ -54,5 +56,12 @@
   .tool-btn.active {
     border-color: #e94560;
     background: #1a4a7a;
+  }
+  .tool-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .tool-btn:disabled:hover {
+    background: #0f3460;
   }
 </style>

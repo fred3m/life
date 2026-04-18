@@ -161,7 +161,6 @@
     }
     if (tool === 'paste') {
       store.pasteAt(gx, gy);
-      store.setTool('draw');
       return;
     }
     if (tool === 'select') {

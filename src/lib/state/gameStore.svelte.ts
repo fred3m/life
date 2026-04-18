@@ -195,6 +195,8 @@ class GameStore {
       this.session.playing = false;
       this.#history.commitTransaction(this.#history.present);
     } else {
+      this.session.selection = null;
+      this.session.selectionDraft = null;
       this.#history.beginTransaction();
       this.session.playing = true;
     }
