@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conway's Game of Life</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1a2e;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    overflow: hidden;
+    height: 100vh;
+    display: flex;
+  }
+
+  /* Sidebar */
+  #sidebar {
+    width: 280px;
+    min-width: 280px;
+    background: #16213e;
+    border-right: 1px solid #0f3460;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+  #sidebar h2 {
+    padding: 16px;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #e94560;
+    border-bottom: 1px solid #0f3460;
+    flex-shrink: 0;
+  }
+  #tools {
+    padding: 8px;
+    border-bottom: 1px solid #0f3460;
+    flex-shrink: 0;
+  }
+  .tool-btn {
+    display: block;
+    width: 100%;
+    padding: 8px 12px;
+    margin-bottom: 4px;
+    background: #0f3460;
+    color: #e0e0e0;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    text-align: left;
+    font-size: 13px;
+  }
+  .tool-btn:hover { background: #1a4a7a; }
+  .tool-btn.active { border-color: #e94560; background: #1a4a7a; }
+
+  #pattern-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+  }
+  .category {
+    margin-bottom: 4px;
+  }
+  .category-header {
+    display: flex;
+    align-items: center;
+    padding: 6px 8px;
+    background: #0f3460;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    user-select: none;
+  }
+  .category-header:hover { background: #1a4a7a; }
+  .category-header .arrow {
+    margin-right: 8px;
+    transition: transform 0.15s;
+    font-size: 10px;
+  }
+  .category-header.open .arrow { transform: rotate(90deg); }
+  .category-items { display: none; padding: 4px 0 4px 16px; }
+  .category-items.open { display: block; }
+  .pattern-btn {
+    display: block;
+    width: 100%;
+    padding: 5px 10px;
+    margin-bottom: 2px;
+    background: transparent;
+    color: #c0c0c0;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    cursor: pointer;
+    text-align: left;
+    font-size: 12px;
+  }
+  .pattern-btn:hover { background: #1a4a7a; color: #fff; }
+  .pattern-btn.active { border-color: #e94560; color: #e94560; }
+
+  /* Main area */
+  #main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Controls */
+  #controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    background: #16213e;
+    border-bottom: 1px solid #0f3460;
+    flex-shrink: 0;
+  }
+  #controls button {
+    padding: 6px 16px;
+    background: #0f3460;
+    color: #e0e0e0;
+    border: 1px solid #1a4a7a;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  #controls button:hover { background: #1a4a7a; }
+  #controls button.primary { background: #e94560; border-color: #e94560; color: #fff; }
+  #controls button.primary:hover { background: #c73a52; }
+  #controls label { font-size: 13px; color: #a0a0a0; }
+  #controls input[type=range] { width: 120px; accent-color: #e94560; }
+  #speed-display { font-size: 12px; color: #e94560; min-width: 50px; }
+  #gen-display { font-size: 12px; color: #a0a0a0; margin-left: auto; }
+
+  /* Canvas */
+  #canvas-wrap {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    cursor: crosshair;
+  }
+  #canvas-wrap.panning { cursor: grab; }
+  #canvas-wrap.playing { cursor: default; }
+  canvas { display: block; }
+
+  /* Pattern preview */
+  #preview {
+    position: fixed;
+    pointer-events: none;
+    opacity: 0.5;
+    z-index: 10;
+    display: none;
+  }
+
+  /* Scrollbar styling */
+  #pattern-list::-webkit-scrollbar { width: 6px; }
+  #pattern-list::-webkit-scrollbar-track { background: #16213e; }
+  #pattern-list::-webkit-scrollbar-thumb { background: #0f3460; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h2>Tools & Patterns</h2>
+  <div id="tools">
+    <button class="tool-btn active" data-tool="draw">&#9998; Draw / Toggle Cells</button>
+    <button class="tool-btn" data-tool="erase">&#9003; Eraser</button>
+  </div>
+  <div id="pattern-list"></div>
+</div>
+
+<div id="main">
+  <div id="controls">
+    <button id="btn-play" class="primary">&#9654; Play</button>
+    <button id="btn-step">Step</button>
+    <button id="btn-clear">Clear</button>
+    <label>Speed:</label>
+    <input type="range" id="speed-slider" min="1" max="60" value="10">
+    <span id="speed-display">10 gen/s</span>
+    <span id="gen-display">Gen: 0</span>
+  </div>
+  <div id="canvas-wrap">
+    <canvas id="grid"></canvas>
+  </div>
+</div>
+
+<script>
+// ─── Pattern Library ─────────────────────────────────────────
+const PATTERNS = {
+  "Still Lifes": {
+    "Block": [[1,1],[1,1]],
+    "Beehive": [[0,1,1,0],[1,0,0,1],[0,1,1,0]],
+    "Loaf": [[0,1,1,0],[1,0,0,1],[0,1,0,1],[0,0,1,0]],
+    "Boat": [[1,1,0],[1,0,1],[0,1,0]],
+    "Tub": [[0,1,0],[1,0,1],[0,1,0]],
+  },
+  "Oscillators": {
+    "Blinker": [[1,1,1]],
+    "Toad": [[0,1,1,1],[1,1,1,0]],
+    "Beacon": [[1,1,0,0],[1,1,0,0],[0,0,1,1],[0,0,1,1]],
+    "Pulsar": [
+      [0,0,1,1,1,0,0,0,1,1,1,0,0],
+      [0,0,0,0,0,0,0,0,0,0,0,0,0],
+      [1,0,0,0,0,1,0,1,0,0,0,0,1],
+      [1,0,0,0,0,1,0,1,0,0,0,0,1],
+      [1,0,0,0,0,1,0,1,0,0,0,0,1],
+      [0,0,1,1,1,0,0,0,1,1,1,0,0],
+      [0,0,0,0,0,0,0,0,0,0,0,0,0],
+      [0,0,1,1,1,0,0,0,1,1,1,0,0],
+      [1,0,0,0,0,1,0,1,0,0,0,0,1],
+      [1,0,0,0,0,1,0,1,0,0,0,0,1],
+      [1,0,0,0,0,1,0,1,0,0,0,0,1],
+      [0,0,0,0,0,0,0,0,0,0,0,0,0],
+      [0,0,1,1,1,0,0,0,1,1,1,0,0],
+    ],
+    "Pentadecathlon": [
+      [0,0,1,0,0,0,0,1,0,0],
+      [1,1,0,1,1,1,1,0,1,1],
+      [0,0,1,0,0,0,0,1,0,0],
+    ],
+  },
+  "Spaceships": {
+    "Glider": [[0,1,0],[0,0,1],[1,1,1]],
+    "LWSS": [[0,1,0,0,1],[1,0,0,0,0],[1,0,0,0,1],[1,1,1,1,0]],
+    "MWSS": [[0,0,1,0,0,0],[1,0,0,0,1,0],[0,0,0,0,0,1],[1,0,0,0,0,1],[0,1,1,1,1,1]],
+    "HWSS": [[0,0,1,1,0,0,0],[1,0,0,0,0,1,0],[0,0,0,0,0,0,1],[1,0,0,0,0,0,1],[0,1,1,1,1,1,1]],
+  },
+  "Guns": {
+    "Gosper Glider Gun": (() => {
+      const g = Array.from({length:9}, () => Array(36).fill(0));
+      const pts = [
+        [4,0],[4,1],[5,0],[5,1],
+        [4,10],[5,10],[6,10],[3,11],[7,11],[2,12],[8,12],[2,13],[8,13],
+        [5,14],[3,15],[7,15],[4,16],[5,16],[6,16],[5,17],
+        [2,20],[3,20],[4,20],[2,21],[3,21],[4,21],[1,22],[5,22],
+        [0,24],[1,24],[5,24],[6,24],
+        [2,34],[3,34],[2,35],[3,35],
+      ];
+      pts.forEach(([r,c]) => g[r][c] = 1);
+      return g;
+    })(),
+    "Simkin Glider Gun": (() => {
+      const g = Array.from({length: 21}, () => Array(33).fill(0));
+      const pts = [
+        [0,0],[0,1],[1,0],[1,1],[0,7],[0,8],[1,7],[1,8],
+        [3,4],[3,5],[4,4],[4,5],
+        [9,22],[9,23],[10,21],[10,25],[11,21],[11,26],[12,21],[12,22],[12,23],[12,27],[12,28],
+        [13,27],[13,28],
+        [17,20],[17,21],[18,20],[18,22],[19,20],
+      ];
+      pts.forEach(([r,c]) => { if (r < g.length && c < g[0].length) g[r][c] = 1; });
+      return g;
+    })(),
+  },
+  "Methuselahs": {
+    "R-pentomino": [[0,1,1],[1,1,0],[0,1,0]],
+    "Diehard": [[0,0,0,0,0,0,1,0],[1,1,0,0,0,0,0,0],[0,1,0,0,0,1,1,1]],
+    "Acorn": [[0,1,0,0,0,0,0],[0,0,0,1,0,0,0],[1,1,0,0,1,1,1]],
+    "Pi-heptomino": [[1,1,1],[1,0,1],[1,0,1]],
+    "B-heptomino": [[0,1,0],[1,1,0],[0,1,1],[0,0,1]],
+  },
+  "Miscellaneous": {
+    "Puffer Train": (() => {
+      const g = Array.from({length: 18}, () => Array(5).fill(0));
+      const pts = [
+        [0,2],[1,3],[2,0],[2,3],[3,1],[3,2],[3,3],
+        [5,0],[6,1],[6,4],[7,0],[8,0],[8,4],[9,0],[9,1],[9,2],[9,3],
+        [12,2],[13,3],[14,0],[14,3],[15,1],[15,2],[15,3],
+      ];
+      pts.forEach(([r,c]) => { if (r < g.length && c < g[0].length) g[r][c] = 1; });
+      return g;
+    })(),
+    "Infinite Growth 1": [[1,1,1,1,1,1,1,1,0,1,1,1,1,1,0,0,0,1,1,1,0,0,0,0,0,0,1,1,1,1,1,1,1,0,1,1,1,1,1]],
+  },
+};
+
+// ─── State ───────────────────────────────────────────────────
+let cells = new Set();
+const CELL_SIZE_BASE = 20;
+let zoom = 1;
+let offsetX = 0, offsetY = 0;
+let playing = false;
+let generation = 0;
+let speed = 10;
+let lastTick = 0;
+let activeTool = 'draw'; // 'draw', 'erase', or pattern name
+let activePattern = null; // 2D array if placing a pattern
+let mouseGridX = 0, mouseGridY = 0;
+
+const canvas = document.getElementById('grid');
+const ctx = canvas.getContext('2d');
+const wrap = document.getElementById('canvas-wrap');
+
+// ─── Resize ──────────────────────────────────────────────────
+function resize() {
+  canvas.width = wrap.clientWidth;
+  canvas.height = wrap.clientHeight;
+  draw();
+}
+window.addEventListener('resize', resize);
+
+// ─── Coordinate helpers ──────────────────────────────────────
+function screenToGrid(sx, sy) {
+  const cs = CELL_SIZE_BASE * zoom;
+  return [Math.floor((sx - offsetX) / cs), Math.floor((sy - offsetY) / cs)];
+}
+function cellKey(x, y) { return x + ',' + y; }
+
+// ─── Drawing ─────────────────────────────────────────────────
+function draw() {
+  const w = canvas.width, h = canvas.height;
+  ctx.fillStyle = '#0a0a1a';
+  ctx.fillRect(0, 0, w, h);
+
+  const cs = CELL_SIZE_BASE * zoom;
+
+  // Grid lines
+  if (cs >= 4) {
+    ctx.strokeStyle = '#1a1a3e';
+    ctx.lineWidth = 1;
+    const startX = offsetX % cs;
+    const startY = offsetY % cs;
+    ctx.beginPath();
+    for (let x = startX; x <= w; x += cs) {
+      ctx.moveTo(Math.round(x) + 0.5, 0);
+      ctx.lineTo(Math.round(x) + 0.5, h);
+    }
+    for (let y = startY; y <= h; y += cs) {
+      ctx.moveTo(0, Math.round(y) + 0.5);
+      ctx.lineTo(w, Math.round(y) + 0.5);
+    }
+    ctx.stroke();
+  }
+
+  // Alive cells
+  ctx.fillStyle = '#e94560';
+  for (const key of cells) {
+    const [cx, cy] = key.split(',').map(Number);
+    const sx = cx * cs + offsetX;
+    const sy = cy * cs + offsetY;
+    if (sx + cs < 0 || sx > w || sy + cs < 0 || sy > h) continue;
+    ctx.fillRect(sx + 0.5, sy + 0.5, cs - 1, cs - 1);
+  }
+
+  // Pattern preview (ghost)
+  if (activePattern && !playing) {
+    ctx.fillStyle = 'rgba(233,69,96,0.35)';
+    for (let r = 0; r < activePattern.length; r++) {
+      for (let c = 0; c < activePattern[r].length; c++) {
+        if (activePattern[r][c]) {
+          const gx = mouseGridX + c;
+          const gy = mouseGridY + r;
+          const sx = gx * cs + offsetX;
+          const sy = gy * cs + offsetY;
+          ctx.fillRect(sx + 0.5, sy + 0.5, cs - 1, cs - 1);
+        }
+      }
+    }
+  }
+}
+
+// ─── Game Logic ──────────────────────────────────────────────
+function step() {
+  const neighborCount = new Map();
+  for (const key of cells) {
+    const [x, y] = key.split(',').map(Number);
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        if (dx === 0 && dy === 0) continue;
+        const nk = cellKey(x + dx, y + dy);
+        neighborCount.set(nk, (neighborCount.get(nk) || 0) + 1);
+      }
+    }
+  }
+  const next = new Set();
+  for (const [key, count] of neighborCount) {
+    if (count === 3 || (count === 2 && cells.has(key))) {
+      next.add(key);
+    }
+  }
+  cells = next;
+  generation++;
+  document.getElementById('gen-display').textContent = 'Gen: ' + generation;
+}
+
+// ─── Game Loop ───────────────────────────────────────────────
+function loop(ts) {
+  if (playing) {
+    const interval = 1000 / speed;
+    if (ts - lastTick >= interval) {
+      step();
+      lastTick = ts;
+      draw();
+    }
+  }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+// ─── Controls ────────────────────────────────────────────────
+const btnPlay = document.getElementById('btn-play');
+const btnStep = document.getElementById('btn-step');
+const btnClear = document.getElementById('btn-clear');
+const speedSlider = document.getElementById('speed-slider');
+const speedDisplay = document.getElementById('speed-display');
+
+btnPlay.addEventListener('click', () => {
+  playing = !playing;
+  btnPlay.innerHTML = playing ? '&#10074;&#10074; Pause' : '&#9654; Play';
+  wrap.classList.toggle('playing', playing);
+  if (playing) lastTick = performance.now();
+  draw();
+});
+
+btnStep.addEventListener('click', () => {
+  if (!playing) { step(); draw(); }
+});
+
+btnClear.addEventListener('click', () => {
+  cells.clear();
+  generation = 0;
+  document.getElementById('gen-display').textContent = 'Gen: 0';
+  draw();
+});
+
+speedSlider.addEventListener('input', () => {
+  speed = parseInt(speedSlider.value);
+  speedDisplay.textContent = speed + ' gen/s';
+});
+
+// ─── Mouse interaction on canvas ─────────────────────────────
+let isPanning = false;
+let isDrawing = false;
+let panStartX, panStartY;
+let drawValue = null; // true = turn on, false = turn off
+
+wrap.addEventListener('mousedown', (e) => {
+  if (playing) return;
+  if (e.button === 1 || (e.button === 0 && e.shiftKey)) {
+    // Middle-click or shift+click to pan
+    isPanning = true;
+    panStartX = e.clientX - offsetX;
+    panStartY = e.clientY - offsetY;
+    wrap.style.cursor = 'grabbing';
+    e.preventDefault();
+    return;
+  }
+  if (e.button === 0) {
+    const rect = canvas.getBoundingClientRect();
+    const [gx, gy] = screenToGrid(e.clientX - rect.left, e.clientY - rect.top);
+
+    if (activePattern) {
+      // Place pattern
+      for (let r = 0; r < activePattern.length; r++) {
+        for (let c = 0; c < activePattern[r].length; c++) {
+          if (activePattern[r][c]) {
+            cells.add(cellKey(gx + c, gy + r));
+          }
+        }
+      }
+      draw();
+    } else {
+      // Draw/erase mode
+      isDrawing = true;
+      const key = cellKey(gx, gy);
+      if (activeTool === 'erase') {
+        drawValue = false;
+        cells.delete(key);
+      } else {
+        drawValue = !cells.has(key);
+        if (drawValue) cells.add(key); else cells.delete(key);
+      }
+      draw();
+    }
+  }
+});
+
+wrap.addEventListener('mousemove', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const [gx, gy] = screenToGrid(e.clientX - rect.left, e.clientY - rect.top);
+  mouseGridX = gx;
+  mouseGridY = gy;
+
+  if (isPanning) {
+    offsetX = e.clientX - panStartX;
+    offsetY = e.clientY - panStartY;
+    draw();
+    return;
+  }
+  if (isDrawing && !playing) {
+    const key = cellKey(gx, gy);
+    if (drawValue) cells.add(key); else cells.delete(key);
+    draw();
+    return;
+  }
+  if (activePattern && !playing) {
+    draw();
+  }
+});
+
+wrap.addEventListener('mouseup', () => {
+  isPanning = false;
+  isDrawing = false;
+  drawValue = null;
+  wrap.style.cursor = '';
+});
+wrap.addEventListener('mouseleave', () => {
+  isPanning = false;
+  isDrawing = false;
+  drawValue = null;
+});
+
+// Zoom
+wrap.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+
+  const oldZoom = zoom;
+  const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+  zoom = Math.max(0.05, Math.min(20, zoom * factor));
+
+  // Zoom toward mouse
+  offsetX = mx - (mx - offsetX) * (zoom / oldZoom);
+  offsetY = my - (my - offsetY) * (zoom / oldZoom);
+  draw();
+}, { passive: false });
+
+// ─── Sidebar: Tools ──────────────────────────────────────────
+document.querySelectorAll('.tool-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    activeTool = btn.dataset.tool;
+    activePattern = null;
+    document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.pattern-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    wrap.style.cursor = activeTool === 'erase' ? 'pointer' : 'crosshair';
+  });
+});
+
+// ─── Sidebar: Patterns ───────────────────────────────────────
+const patternList = document.getElementById('pattern-list');
+for (const [category, patterns] of Object.entries(PATTERNS)) {
+  const catDiv = document.createElement('div');
+  catDiv.className = 'category';
+
+  const header = document.createElement('div');
+  header.className = 'category-header';
+  header.innerHTML = '<span class="arrow">&#9654;</span>' + category;
+  header.addEventListener('click', () => {
+    header.classList.toggle('open');
+    items.classList.toggle('open');
+  });
+  catDiv.appendChild(header);
+
+  const items = document.createElement('div');
+  items.className = 'category-items';
+
+  for (const [name, pattern] of Object.entries(patterns)) {
+    const btn = document.createElement('button');
+    btn.className = 'pattern-btn';
+    btn.textContent = name;
+    btn.addEventListener('click', () => {
+      activePattern = pattern;
+      activeTool = 'pattern';
+      document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.pattern-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      wrap.style.cursor = 'crosshair';
+    });
+    items.appendChild(btn);
+  }
+  catDiv.appendChild(items);
+  patternList.appendChild(catDiv);
+}
+
+// ─── Init ────────────────────────────────────────────────────
+resize();
+// Center the view
+offsetX = canvas.width / 2;
+offsetY = canvas.height / 2;
+draw();
+</script>
+</body>
+</html>
